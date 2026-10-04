@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta name="description" content="A little sliding puzzle for a bright break. Shuffle, slide, and solve the picture.">
+  <title>Little Loop — a tiny puzzle break</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f5f0;
+      --ink: #242523;
+      --muted: #85857f;
+      --line: #e8e6df;
+      --lime: #d7f276;
+      --purple: #7867d9;
+      --board: min(82vw, 426px);
+      font-family: ui-rounded, "SF Pro Rounded", "Avenir Next", Avenir, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px; min-height: 100svh; margin: 0; color: var(--ink);
+      background: var(--paper); display: flex; justify-content: center;
+      padding: 22px 18px max(22px, env(safe-area-inset-bottom));
+    }
+    button { color: inherit; font: inherit; }
+    .app { width: min(100%, 960px); display: flex; flex-direction: column; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -.04em; }
+    .brand-mark { width: 30px; height: 30px; background: var(--lime); border-radius: 10px; display: grid; place-items: center; font-size: 16px; transform: rotate(-7deg); }
+    .score-pill { display: flex; align-items: center; gap: 9px; padding: 8px 13px 8px 9px; border: 1px solid var(--line); border-radius: 999px; background: #fffefa; font-size: 12px; font-weight: 750; }
+    .score-icon { width: 24px; height: 24px; border-radius: 50%; background: #f1edff; color: var(--purple); display: grid; place-items: center; font-size: 13px; }
+    .score-number { min-width: 24px; font-variant-numeric: tabular-nums; }
+    main { flex: 1; display: grid; grid-template-columns: 1fr 270px; align-items: center; gap: clamp(28px, 7vw, 94px); width: min(100%, 810px); margin: 35px auto; }
+    .game { display: flex; flex-direction: column; align-items: center; }
+    .intro { width: var(--board); max-width: 426px; margin: 0 0 19px; }
+    .eyebrow { color: var(--purple); text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 850; margin: 0 0 7px; }
+    h1 { font-size: clamp(25px, 5vw, 34px); letter-spacing: -.06em; line-height: 1.05; margin: 0; font-weight: 850; }
+    .subtitle { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+    .board-shell { width: var(--board); height: var(--board); max-width: 426px; max-height: 426px; padding: 9px; background: #fffefa; border: 1px solid #eeece5; border-radius: 22px; box-shadow: 0 14px 42px #38332112, 0 2px 6px #3833210a; touch-action: manipulation; }
+    .board { position: relative; width: 100%; height: 100%; border-radius: 15px; overflow: hidden; background: #f0eee9; outline: none; }
+    .board:focus-visible { box-shadow: 0 0 0 3px var(--purple); }
+    .tile { position: absolute; left: 0; top: 0; width: calc((100% - 14px) / 3); height: calc((100% - 14px) / 3); border: 0; border-radius: 9px; padding: 0; cursor: pointer; background-repeat: no-repeat; box-shadow: inset 0 0 0 1px #ffffff2c, 0 2px 4px #352a291d; transition: transform 190ms cubic-bezier(.2,.8,.2,1), filter 130ms ease, box-shadow 130ms ease; -webkit-tap-highlight-color: transparent; }
+    .tile:hover { filter: brightness(1.06); box-shadow: inset 0 0 0 1px #ffffff50, 0 4px 10px #352a2928; }
+    .tile:active { filter: brightness(.94); }
+    .tile:focus-visible { outline: 3px solid white; outline-offset: -4px; box-shadow: 0 0 0 3px var(--purple); z-index: 3; }
+    .empty-slot { position: absolute; width: calc((100% - 14px) / 3); height: calc((100% - 14px) / 3); display: grid; place-items: center; color: #aaa89f; }
+    .empty-slot::after { content: "✳"; font-size: 21px; opacity: .45; }
+    .board.solved .empty-slot { opacity: 0; }
+    .game-controls { display: flex; gap: 10px; margin-top: 16px; width: var(--board); max-width: 426px; }
+    .btn { border: 0; border-radius: 12px; min-height: 45px; padding: 0 17px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 780; transition: transform 130ms ease, background 130ms ease, box-shadow 130ms ease; -webkit-tap-highlight-color: transparent; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(1px) scale(.99); }
+    .btn:focus-visible { outline: 3px solid #9586ed; outline-offset: 3px; }
+    .btn-primary { flex: 1; background: var(--ink); color: white; box-shadow: 0 3px 7px #2425231c; }
+    .btn-primary:hover { background: #393a37; }
+    .btn-secondary { background: #eeece5; color: #44443f; }
+    .btn-secondary:hover { background: #e7e4dc; }
+    .btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+    .side { align-self: center; }
+    .preview-card { background: #fffefa; border: 1px solid var(--line); border-radius: 18px; padding: 17px; }
+    .preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .preview-head h2 { font-size: 12px; margin: 0; letter-spacing: -.01em; }
+    .preview-tag { border-radius: 999px; padding: 5px 8px; color: #68635b; background: #f2f0e9; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .preview { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; background: #f1eee5; object-fit: cover; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 13px; }
+    .stat { padding: 11px 12px; border-radius: 12px; background: #f7f5f0; }
+    .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-weight: 800; }
+    .stat-value { margin-top: 4px; font-size: 18px; font-weight: 820; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .howto { margin: 15px 3px 0; color: #77766f; font-size: 11px; line-height: 1.65; }
+    .howto strong { color: #454641; }
+    footer { color: #a09e96; text-align: center; font-size: 10px; padding-top: 4px; }
+    .toast { position: fixed; z-index: 6; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translate(-50%, 12px); opacity: 0; pointer-events: none; background: #252623; color: white; padding: 11px 16px; border-radius: 999px; font-size: 12px; font-weight: 750; box-shadow: 0 8px 25px #0002; transition: opacity 180ms ease, transform 180ms ease; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .confetti { position: fixed; z-index: 5; top: -12px; width: 8px; height: 12px; pointer-events: none; border-radius: 2px; animation: fall 1250ms ease-in forwards; }
+    @keyframes fall { to { transform: translate3d(var(--drift), 105vh, 0) rotate(720deg); opacity: 0; } }
+    @media (max-width: 690px) {
+      :root { --board: min(88vw, 426px); }
+      body { padding: 15px 14px max(18px, env(safe-area-inset-bottom)); }
+      main { display: flex; flex-direction: column; gap: 21px; margin: 27px auto 22px; }
+      .side { width: var(--board); max-width: 426px; }
+      .preview-card { padding: 13px; display: grid; grid-template-columns: 77px 1fr; gap: 12px; align-items: center; }
+      .preview-head { grid-column: 2; grid-row: 1; margin: 0; align-self: start; }
+      .preview { grid-column: 1; grid-row: 1 / span 2; }
+      .stats { grid-column: 2; margin: -24px 0 0; }
+      .stat { padding: 8px 9px; }
+      .stat-value { font-size: 15px; }
+      .howto { display: none; }
+      footer { padding-bottom: 2px; }
+    }
+    @media (max-width: 370px) {
+      :root { --board: min(91vw, 426px); }
+      .board-shell { padding: 7px; border-radius: 18px; }
+      .board { border-radius: 12px; }
+      .tile { border-radius: 7px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span>little loop</span></div>
+      <div class="score-pill" aria-label="Total score"><span class="score-icon" aria-hidden="true">✦</span><span>SCORE</span><span class="score-number" id="score">0</span></div>
+    </header>
+    <main>
+      <section class="game" aria-label="Sliding picture puzzle">
+        <div class="intro"><p class="eyebrow" id="puzzle-label">PUZZLE 01 · SUNSHINE</p><h1>A tiny puzzle break.</h1><p class="subtitle">Slide the pieces. Find your little moment.</p></div>
+        <div class="board-shell"><div class="board" id="board" role="group" aria-label="Sliding puzzle board. Use arrow keys to move a tile into the empty space." tabindex="0"></div></div>
+        <div class="game-controls">
+          <button class="btn btn-primary" id="new-button" type="button"><span aria-hidden="true">↻</span> New puzzle</button>
+          <button class="btn btn-secondary" id="restart-button" type="button" aria-label="Restart this puzzle"><span aria-hidden="true">⟲</span> Restart</button>
+        </div>
+      </section>
+      <aside class="side" aria-label="Puzzle details">
+        <section class="preview-card">
+          <div class="preview-head"><h2>Picture this</h2><span class="preview-tag">Your goal</span></div>
+          <img class="preview" id="preview" alt="The complete picture to make by solving the puzzle">
+          <div class="stats">
+            <div class="stat"><div class="stat-label">Moves</div><div class="stat-value" id="moves">0</div></div>
+            <div class="stat"><div class="stat-label">Solved</div><div class="stat-value" id="solved">0</div></div>
+          </div>
+        </section>
+        <p class="howto"><strong>How to play</strong><br>Tap or click a piece next to the empty spot. Use your arrow keys, too. Put the picture back together to earn <strong>100 points</strong>.</p>
+      </aside>
+    </main>
+    <footer>A little shuffle is good for the soul.</footer>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    (() => {
+      'use strict';
+      const N = 3;
+      const scenes = [
+        { name: 'SUNSHINE', bg: '#d6ed91', sun: '#ffd568', hill: '#8bc89c', hill2: '#61a895', flower: '#f88b78', leaf: '#3e7b68', sky: '#c4e6e5' },
+        { name: 'BERRY NICE', bg: '#f5d9d5', sun: '#ffb276', hill: '#c891bb', hill2: '#8a77b9', flower: '#fdf0c6', leaf: '#4f8b70', sky: '#f6c9ce' },
+        { name: 'SLOW SUNDAY', bg: '#f8dfad', sun: '#fff1c3', hill: '#84b9ab', hill2: '#56968e', flower: '#e27b78', leaf: '#367968', sky: '#d3e9dd' },
+        { name: 'PEACH PLEASE', bg: '#f4cbb0', sun: '#ffedb5', hill: '#dda17c', hill2: '#bc7b75', flower: '#eee59f', leaf: '#60856c', sky: '#f8d9c5' },
+        { name: 'BLUE SKIES', bg: '#d3e8f1', sun: '#ffe18c', hill: '#91c6bb', hill2: '#629e9e', flower: '#f28d87', leaf: '#418078', sky: '#b9dce9' }
+      ];
+      const $ = id => document.getElementById(id);
+      const board = $('board'), scoreEl = $('score'), movesEl = $('moves'), solvedEl = $('solved');
+      let sceneIndex = -1, tiles = [], blank = 8, moves = 0, score = 0, solvedCount = 0, startOrder = [], previousStart = '', locked = false, toastTimer;
+      const goal = Array.from({ length: 8 }, (_, i) => i).concat(-1);
+      const esc = s => s.replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+      function sceneSvg(p) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><rect width="300" height="300" fill="${p.sky}"/><circle cx="226" cy="72" r="38" fill="${p.sun}"/><path d="M0 172Q46 126 101 164t103 0q49-45 96-12v148H0Z" fill="${p.hill}"/><path d="M0 218q61-72 119-18t91-1q50-42 90 3v98H0Z" fill="${p.hill2}"/><path d="M28 265q41-82 82-8M217 270q-4-76 47-105" fill="none" stroke="${p.leaf}" stroke-width="9" stroke-linecap="round"/><path d="M75 237q-30-6-32-32 29 0 32 32m15 5q29-8 30-34-30 3-30 34m116-3q-22-13-13-35 23 12 13 35m24-40q22-11 17-34-24 11-17 34" fill="${p.leaf}"/><g transform="translate(146 201)"><path d="M0 18v39" stroke="${p.leaf}" stroke-width="6" stroke-linecap="round"/><circle r="22" fill="${p.flower}"/><circle cx="0" cy="-21" r="12" fill="${p.flower}"/><circle cx="20" cy="-6" r="12" fill="${p.flower}"/><circle cx="12" cy="17" r="12" fill="${p.flower}"/><circle cx="-12" cy="17" r="12" fill="${p.flower}"/><circle cx="-20" cy="-6" r="12" fill="${p.flower}"/><circle r="10" fill="${p.sun}"/></g><circle cx="49" cy="87" r="3" fill="#fff" opacity=".8"/><circle cx="85" cy="54" r="2" fill="#fff" opacity=".8"/><circle cx="164" cy="91" r="3" fill="#fff" opacity=".8"/><path d="M34 121q12-13 24 0-12 12-24 0m1 0h22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/><text x="150" y="286" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" letter-spacing="4" fill="#ffffffaa">LITTLE LOOP</text></svg>`;
+      }
+      function imageUrl(scene) { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sceneSvg(scene)); }
+      function setPosition(el, index) {
+        const col = index % N, row = Math.floor(index / N), unit = (board.clientWidth - 14) / N + 7;
+        el.style.transform = `translate3d(${col * unit}px, ${row * unit}px, 0)`;
+      }
+      function render() {
+        const p = scenes[sceneIndex], url = imageUrl(p);
+        $('preview').src = url;
+        $('puzzle-label').textContent = `PUZZLE ${String(sceneIndex + 1).padStart(2, '0')} · ${p.name}`;
+        board.innerHTML = '';
+        board.classList.toggle('solved', isSolved());
+        const hole = document.createElement('div'); hole.className = 'empty-slot'; hole.setAttribute('aria-hidden', 'true'); setPosition(hole, blank); board.append(hole);
+        tiles.forEach((value, position) => {
+          if (value < 0) return;
+          const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'tile';
+          tile.setAttribute('aria-label', `Piece ${value + 1}, row ${Math.floor(value / N) + 1}, column ${value % N + 1}. Move into empty space.`);
+          tile.style.backgroundImage = `url("${url}")`;
+          const x = value % N, y = Math.floor(value / N);
+          tile.style.backgroundSize = '300% 300%'; tile.style.backgroundPosition = `${x * 50}% ${y * 50}%`;
+          setPosition(tile, position);
+          tile.addEventListener('click', () => moveTile(position));
+          board.append(tile);
+        });
+        movesEl.textContent = moves; scoreEl.textContent = score; solvedEl.textContent = solvedCount;
+        $('restart-button').disabled = moves === 0 || isSolved();
+        board.setAttribute('aria-label', `Sliding puzzle board, ${moves} moves. Use arrow keys to move a tile into the empty space.`);
+      }
+      function isSolved() { return tiles.every((v, i) => v === goal[i]); }
+      function adjacent(a, b) { return Math.abs(a % N - b % N) + Math.abs(Math.floor(a / N) - Math.floor(b / N)) === 1; }
+      function moveTile(position) {
+        if (locked || !adjacent(position, blank)) return false;
+        [tiles[position], tiles[blank]] = [tiles[blank], tiles[position]]; blank = position; moves++;
+        render();
+        if (isSolved()) win();
+        return true;
+      }
+      function showToast(message) {
+        const toast = $('toast'); toast.textContent = message; toast.classList.add('show');
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+      }
+      function celebrate() {
+        const colors = ['#d7f276', '#7867d9', '#ff9c86', '#7ccac0', '#ffd568'];
+        for (let i = 0; i < 32; i++) {
+          const bit = document.createElement('i'); bit.className = 'confetti';
+          bit.style.left = `${Math.random() * 100}vw`; bit.style.background = colors[i % colors.length];
+          bit.style.setProperty('--drift', `${Math.round(Math.random() * 150 - 75)}px`);
+          bit.style.animationDelay = `${Math.random() * 250}ms`; document.body.append(bit);
+          setTimeout(() => bit.remove(), 1700);
+        }
+      }
+      function win() {
+        locked = true; solvedCount++; score += 100;
+        board.classList.add('solved'); scoreEl.textContent = score; solvedEl.textContent = solvedCount;
+        $('restart-button').disabled = true;
+        showToast(`Picture perfect! +100 points · ${moves} moves`); celebrate();
+        setTimeout(() => { locked = false; }, 500);
+      }
+      function shuffle() {
+        let order, attempts = 0;
+        do {
+          order = goal.slice(); let hole = 8, lastHole = -1;
+          for (let step = 0; step < 90; step++) {
+            const choices = [hole - N, hole + N, ...(hole % N ? [hole - 1] : []), ...(hole % N < N - 1 ? [hole + 1] : [])]
+              .filter(i => i >= 0 && i < 9 && i !== lastHole);
+            const next = choices[Math.floor(Math.random() * choices.length)];
+            [order[hole], order[next]] = [order[next], order[hole]]; lastHole = hole; hole = next;
+          }
+          attempts++;
+        } while ((order.join(',') === previousStart || order.every((v, i) => v === goal[i])) && attempts < 12);
+        previousStart = order.join(','); tiles = order; blank = tiles.indexOf(-1); startOrder = order.slice(); moves = 0; locked = false;
+        render();
+      }
+      function newPuzzle() {
+        sceneIndex = (sceneIndex + 1) % scenes.length;
+        shuffle(); showToast('A fresh little puzzle, just for you.');
+      }
+      $('new-button').addEventListener('click', newPuzzle);
+      $('restart-button').addEventListener('click', () => {
+        if (!moves || isSolved()) return;
+        tiles = startOrder.slice(); blank = tiles.indexOf(-1); moves = 0; locked = false; render(); showToast('Back to the beginning. You’ve got this!');
+      });
+      board.addEventListener('keydown', e => {
+        const directions = { ArrowUp: -N, ArrowDown: N, ArrowLeft: -1, ArrowRight: 1 };
+        if (!(e.key in directions)) return;
+        e.preventDefault(); const delta = directions[e.key], target = blank - delta;
+        if (target < 0 || target > 8 || (Math.abs(delta) === 1 && Math.floor(target / N) !== Math.floor(blank / N))) return;
+        moveTile(target);
+      });
+      window.addEventListener('resize', () => board.querySelectorAll('.tile, .empty-slot').forEach(el => setPosition(el, el.classList.contains('empty-slot') ? blank : tiles.indexOf(Number(el.getAttribute('aria-label')?.match(/Piece (\d+)/)?.[1]) - 1))));
+      // Start with a solvable shuffle made only from valid moves.
+      sceneIndex = 0; shuffle();
+    })();
+  </script>
+</body>
+</html>
